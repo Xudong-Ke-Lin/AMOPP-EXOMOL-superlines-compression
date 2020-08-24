@@ -34,7 +34,7 @@ def main():
     df_all = [pd.read_csv(f,names=['wavenumber','intensity'], 
                           delim_whitespace=True, header=None) for f in filenames]
     
-    # get index of the first temperature without common zero intensities
+    # get index of the first temperature with common zero intensities
     index = get_ref_index(df_all)
     
     # index of common zero intensities
