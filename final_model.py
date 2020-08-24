@@ -72,9 +72,9 @@ def main():
     df_states, df_transitions = get_exomol_files(data, start, g, J, quantum_number)
     # change format and save
     df_states.E = df_states.E.map('{:.6f}'.format)
-    df_states.to_csv('SiO2_final.states',header=None, index=None, sep=' ') 
+    df_states.to_csv('SiO2_final.states',header=None, index=None, sep="\t") 
     df_transitions.A = df_transitions.A.map('{:.4E}'.format)
-    df_transitions.to_csv('SiO2_final.trans',header=None, index=None, sep=' ') 
+    df_transitions.to_csv('SiO2_final.trans',header=None, index=None, sep="\t") 
 
 if __name__ == '__main__':
     main()
