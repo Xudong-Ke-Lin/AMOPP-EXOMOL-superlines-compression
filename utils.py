@@ -100,8 +100,9 @@ def get_initial_guesses(data, wavenumber_array, pf, temp, pw0):
     Outputs: pw0s_mean: mean initial guess per batches'''
     # total wavenumber length
     total_wavenumber_legth = len(wavenumber_array)
+    
     # number of batches (and guesses)
-    number_batches = 10
+    number_batches = 100
     # number of wavenumber sample in one batch
     wavenumber_size = 10
     # step in the total wavenumber array
@@ -133,10 +134,14 @@ def get_initial_guesses(data, wavenumber_array, pf, temp, pw0):
     pw0s_mean = np.zeros((number_batches,4))
     for batch in range(number_batches):
         pw0s_mean[batch] = np.mean(pw0s[batch*wavenumber_size:wavenumber_size*(batch+1)],axis=0)
+        
     # round to the magnitude
     pw0s_mean = 10**np.round(np.log10(pw0s_mean)) 
     # keep the energies using original guess (good for H2O and SiO2)
     pw0s_mean[:,2:4] = [pw0[2],pw0[3]]
+    
+    # replace bigger pw[0] (low temp Eins. coeff) to pw[1] (high temp Eins. coeff)
+    pw0s_mean[np.where(pw0s_mean[:,0]>pw0s_mean[:,1]),0]=pw0s_mean[np.where(pw0s_mean[:,0]>pw0s_mean[:,1]),1]
     
     return pw0s_mean
 
@@ -173,6 +178,7 @@ def get_parameters(data, data_pf, temp, wavenumber_array, pw0):
     # get initial guesses
     pw0s_mean = get_initial_guesses(intensity, wavenumber_array, pf, temp, pw0)
     number_batches = len(pw0s_mean)
+    
     # start count
     i = 0
     for batch,pw0_batch in enumerate(pw0s_mean):
@@ -182,23 +188,63 @@ def get_parameters(data, data_pf, temp, wavenumber_array, pw0):
         # single energy fit initial guess
         pw0_single = (pw0_batch[0],pw0_batch[2])
         for wavenumber in wavenumber_array[start:end]:
+            # try dual fit
             try:
-                pw, cov = curve_fit(intensity_fitting(wavenumber,pf), temp, intensity[i], pw0_batch,maxfev=5000)
+                pw, cov = curve_fit(intensity_fitting(wavenumber,pf), temp, intensity[i], pw0_batch,maxfev=20000)
+                
                 # if negative Einstein coefficient
                 if (pw[0] < 0.0) or (pw[1] < 0.0):
-                    try:
-                        pw, cov = curve_fit(intensity_fitting_single(wavenumber,pf), 
-                                            temp, intensity[i], pw0_single, maxfev=20000)
-                        wavenumber_list.append(wavenumber)
-                        einstein_coeff.append([pw[0],0])
-                        energy.append([pw[1],0])
-                    except RuntimeError:
-                        wavenumber_error.append(wavenumber)
+                    # try dual fit with different initial guess
+                    for scale in [1e1,1e-1,1e2,1e-2]:
+                        
+                        try:
+                            # use scale for Einstein coeff.
+                            pw, cov = curve_fit(intensity_fitting(wavenumber,pf), 
+                                                temp, intensity[i], 
+                                                [pw0_batch[0]*scale,pw0_batch[1]*scale,pw0_batch[2],pw0_batch[3]], 
+                                                maxfev=20000)
+                        except RuntimeError:
+                            # if RuntimeError after all the scales
+                            if scale==1e-2:
+                                # try single fit
+                                try:
+                                    pw, cov = curve_fit(intensity_fitting(wavenumber,pf), temp, intensity[i], 
+                                                        pw0_batch,maxfev=20000)
+                                    wavenumber_list.append(wavenumber)
+                                    einstein_coeff.append([pw[0],0])
+                                    energy.append([pw[1],0])
+                                except RuntimeError:
+                                    wavenumber_error.append(wavenumber)
+                            continue                   
+                        
+                        # if negative Einstein coefficient
+                        if (pw[0] < 0.0) or (pw[1] < 0.0):
+                            # if negative Einstein coefficient after all the scales
+                            if scale==1e-2:
+                                # try single fit
+                                try:
+                                    pw, cov = curve_fit(intensity_fitting(wavenumber,pf), temp, intensity[i], 
+                                                        pw0_batch,maxfev=20000)
+                                    wavenumber_list.append(wavenumber)
+                                    einstein_coeff.append([pw[0],0])
+                                    energy.append([pw[1],0])
+                                except RuntimeError:
+                                    wavenumber_error.append(wavenumber)
+                            continue
+                        
+                        # append when not negative Einstein coefficient after using scale
+                        else:
+                            wavenumber_list.append(wavenumber)
+                            einstein_coeff.append([pw[0],pw[1]])
+                            energy.append([pw[2],pw[3]])
+                            break
+                         
                 # append when not negative Einstein coefficient
                 else:
                     wavenumber_list.append(wavenumber)
                     einstein_coeff.append([pw[0],pw[1]])
                     energy.append([pw[2],pw[3]])
+                    
             # fitting exceeds maxfev
             except RuntimeError:
                 try:
