@@ -48,7 +48,7 @@ def main():
     # avoid zero wavenumber
     wavenumber_non_zero = np.delete(wavenumber_non_zero,np.where(wavenumber_non_zero==0.0))
      
-    # guess for Einstein coefficients & effecrtive energies
+    # guess for Einstein coefficients & effective energies
     pw0 = (1e2,1e2,10000,15000)
     
 
