@@ -208,8 +208,8 @@ def get_parameters(data, data_pf, temp, wavenumber_array, pw0):
                             if scale==1e-2:
                                 # try single fit
                                 try:
-                                    pw, cov = curve_fit(intensity_fitting(wavenumber,pf), temp, intensity[i], 
-                                                        pw0_batch,maxfev=20000)
+                                    pw, cov = curve_fit(intensity_fitting_single(wavenumber,pf), temp, intensity[i], 
+                                                        pw0_single,maxfev=20000)
                                     wavenumber_list.append(wavenumber)
                                     einstein_coeff.append([pw[0],0])
                                     energy.append([pw[1],0])
@@ -223,8 +223,8 @@ def get_parameters(data, data_pf, temp, wavenumber_array, pw0):
                             if scale==1e-2:
                                 # try single fit
                                 try:
-                                    pw, cov = curve_fit(intensity_fitting(wavenumber,pf), temp, intensity[i], 
-                                                        pw0_batch,maxfev=20000)
+                                    pw, cov = curve_fit(intensity_fitting_single(wavenumber,pf), temp, intensity[i], 
+                                                        pw0_single,maxfev=20000)
                                     wavenumber_list.append(wavenumber)
                                     einstein_coeff.append([pw[0],0])
                                     energy.append([pw[1],0])
